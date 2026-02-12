@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:bmi_app/services/firebase_auth_service.dart';
 import 'signin.dart';
 
 class Signup extends StatefulWidget {
@@ -18,6 +19,8 @@ class _SignUpState extends State<Signup> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
+  final FirebaseAuthService _authService = FirebaseAuthService();
 
   void _signUp() async {
     final String email = _emailTextController.text.trim();
@@ -56,7 +59,37 @@ class _SignUpState extends State<Signup> {
       return;
     }
 
-    
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final user = await _authService.signUpWithEmail(
+        email: email,
+        password: password,
+      );
+
+      if (user != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created successfully!'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => Signin()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -124,7 +157,7 @@ class _SignUpState extends State<Signup> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _signUp,
+                    onPressed: _isLoading ? null : _signUp,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
@@ -133,13 +166,22 @@ class _SignUpState extends State<Signup> {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    child: Text(
-                      'Sign Up',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            'Sign Up',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 15),

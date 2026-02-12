@@ -1,5 +1,6 @@
 import 'package:bmi_app/screens/home.dart';
 import 'package:flutter/material.dart';
+import 'package:bmi_app/services/firebase_auth_service.dart';
 import 'signup.dart';
 
 class Signin extends StatefulWidget {
@@ -12,34 +13,47 @@ class _SigninState extends State<Signin> {
   final TextEditingController _passwordController = TextEditingController();
   bool _obscureText = true;
   final _formKey = GlobalKey<FormState>();
-
+  final FirebaseAuthService _authService = FirebaseAuthService();
+  bool _isLoading = false;
 
   void _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
-      );
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    if (email == 'csi@gmail.com' && password == '123456') {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final user = await _authService.signInWithEmail(
+        email: email,
+        password: password,
+      );
+
+      if (user != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Login Successful'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen()),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login Successful'),
-          duration: Duration(seconds: 1),
-        ),
+        SnackBar(content: Text(e.toString())),
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomeScreen()),
-      );
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Incorrect login')));
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
   
@@ -124,7 +138,7 @@ class _SigninState extends State<Signin> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: _login,
+                        onPressed: _isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
                           backgroundColor:  Colors.green,
                           foregroundColor: Colors.white,
@@ -134,9 +148,19 @@ class _SigninState extends State<Signin> {
                           ),
                           
                         ),
-                        child: Text('Login',style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold)),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text('Login',
+                                style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold)),
                       ),
                     ),
                     const SizedBox(height: 24),
